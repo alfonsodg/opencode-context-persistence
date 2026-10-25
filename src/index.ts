@@ -5,9 +5,14 @@ import { join } from "node:path"
 const plugin: Plugin = {
   id: "context-persistence",
   setup: async (ctx: any) => {
-    const directory = ctx?.location?.directory || ctx?.directory || process.cwd()
-    const worktree = ctx?.location?.worktree || ctx?.worktree || directory
-    const agentsPath = join(worktree, "AGENTS.md")
+    const directory =
+      typeof ctx?.location?.directory === "string"
+        ? ctx.location.directory
+        : typeof ctx?.directory === "string"
+          ? ctx.directory
+          : process.cwd()
+
+    const agentsPath = join(directory, "AGENTS.md")
 
     const readAgents = (): string => {
       try {

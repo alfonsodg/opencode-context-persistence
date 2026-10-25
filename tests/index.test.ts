@@ -14,4 +14,10 @@ describe("ContextPersistence plugin v2", () => {
     expect(result).toHaveProperty("experimental.session.compacting")
     expect(typeof result["experimental.session.compacting"]).toBe("function")
   })
+
+  test("setup handles non-string directory gracefully", async () => {
+    const mod = await import("../src/index.ts")
+    const result = await mod.default.setup({ directory: { foo: "bar" } })
+    expect(result).toHaveProperty("experimental.session.compacting")
+  })
 })
