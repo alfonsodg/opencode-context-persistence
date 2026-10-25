@@ -17,7 +17,7 @@ survive compaction.
 
 ## Installation
 
-### From npm (when published)
+### From npm
 
 ```json
 {
@@ -36,6 +36,10 @@ use.
 
 Place an `AGENTS.md` at your project root. The plugin reads it automatically
 and re-injects it after every compaction.
+
+## Author
+
+Alfonso de la Guarda Reyes <alfonsodg@gmail.com>
 
 ## License
 
