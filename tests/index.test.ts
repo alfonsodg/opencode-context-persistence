@@ -7,4 +7,11 @@ describe("ContextPersistence plugin v2", () => {
     expect(mod.default.id).toBe("context-persistence")
     expect(typeof mod.default.setup).toBe("function")
   })
+
+  test("setup returns compaction hook", async () => {
+    const mod = await import("../src/index.ts")
+    const result = await mod.default.setup({ location: { directory: "/tmp", worktree: "/tmp" } })
+    expect(result).toHaveProperty("experimental.session.compacting")
+    expect(typeof result["experimental.session.compacting"]).toBe("function")
+  })
 })
