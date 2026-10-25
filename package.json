@@ -21,7 +21,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/alfonsodg/opencode-context-persistence.git"
+    "url": "git+https://github.com/alfonsodg/opencode-context-persistence.git"
   },
   "author": "Alfonso de la Guarda Reyes <alfonsodg@gmail.com>"
 }
