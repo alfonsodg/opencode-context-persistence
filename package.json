@@ -11,10 +11,17 @@
   "dependencies": {
     "@opencode-ai/plugin": "^2.0.0"
   },
-  "keywords": ["opencode", "plugin", "context", "compaction", "agents-md"],
+  "keywords": [
+    "opencode",
+    "plugin",
+    "context",
+    "compaction",
+    "agents-md"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/alfonsodg/opencode-context-persistence.git"
-  }
+  },
+  "author": "Alfonso de la Guarda Reyes <alfonsodg@gmail.com>"
 }
