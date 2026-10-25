@@ -9,7 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "^2.0.0"
+    "@opencode-ai/plugin": "^1.19.0"
   },
   "keywords": [
     "opencode",
