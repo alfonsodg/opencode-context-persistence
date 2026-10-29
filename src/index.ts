@@ -1,10 +1,9 @@
-import type { Plugin } from "@opencode-ai/plugin"
 import { readFileSync, existsSync } from "node:fs"
 import { join } from "node:path"
 
-const plugin: Plugin = {
+export default {
   id: "context-persistence",
-  setup: async (ctx: any) => {
+  async setup(ctx: any) {
     const directory =
       typeof ctx?.location?.directory === "string"
         ? ctx.location.directory
@@ -25,21 +24,19 @@ const plugin: Plugin = {
       return ""
     }
 
-    return {
-      "experimental.session.compacting": async (_input: any, output: any) => {
+    if (ctx?.session?.hook) {
+      ctx.session.hook("compaction", async (event: any) => {
         const agents = readAgents()
-        if (agents) {
-          output.context.push(`
-## Re-injected AGENTS.md (context persistence)
-The following rules were re-injected after compaction to prevent context loss.
-Follow them without exception:
-
-${agents}
-`)
+        if (!agents) return
+        const text = `## Re-injected AGENTS.md (context persistence)\n${agents}`
+        if (Array.isArray(event?.context)) {
+          event.context.push(text)
+        } else if (Array.isArray(event?.options?.context)) {
+          event.options.context.push(text)
+        } else if (typeof event?.prompt === "string") {
+          event.prompt += `\n\n${text}`
         }
-      },
+      })
     }
   },
 }
-
-export default plugin
