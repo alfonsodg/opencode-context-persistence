@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import plugin, { digest, resolveAgents } from "../src/index.ts"
+import plugin, { digest, resolveAgents, server } from "../src/index.ts"
 
 const AGENTS =
   "# AI Agents Guide — Test\n\nYOU MUST FOLLOW EVERY RULE.\n\n## Rules\n- Rule one\n1. Rule two\n"
@@ -171,5 +171,70 @@ describe("AGENTS.md resolution", () => {
   test("digest stays bounded", () => {
     const long = `# Title\n\n${"- rule\n".repeat(5000)}`
     expect(digest(long, 2000).length).toBeLessThanOrEqual(2020)
+  })
+})
+
+describe("V1 entrypoint (OpenCode 1.x)", () => {
+  test("server() exposes the V1 hooks", async () => {
+    const hooks = await server()
+    expect(typeof hooks["experimental.session.compacting"]).toBe("function")
+    expect(typeof hooks["experimental.chat.system.transform"]).toBe("function")
+  })
+
+  test("compaction hook appends AGENTS.md to output.context", async () => {
+    const previous = process.env.HOME
+    process.env.HOME = root
+    try {
+      mkdirSync(join(root, ".config", "opencode"), { recursive: true })
+      writeFileSync(join(root, ".config", "opencode", "AGENTS.md"), AGENTS)
+      const hooks = await server()
+      const output: any = { context: [] }
+      await hooks["experimental.session.compacting"]({}, output)
+      expect(output.context).toHaveLength(1)
+      expect(output.context[0]).toContain("YOU MUST FOLLOW EVERY RULE")
+    } finally {
+      process.env.HOME = previous
+    }
+  })
+
+  test("system transform appends the digest to output.system", async () => {
+    const previous = process.env.HOME
+    process.env.HOME = root
+    try {
+      mkdirSync(join(root, ".config", "opencode"), { recursive: true })
+      writeFileSync(join(root, ".config", "opencode", "AGENTS.md"), AGENTS)
+      const hooks = await server()
+      const output: any = { system: [] }
+      await hooks["experimental.chat.system.transform"]({}, output)
+      expect(output.system).toHaveLength(1)
+      expect(output.system[0]).toContain("Obey AGENTS.md")
+    } finally {
+      process.env.HOME = previous
+    }
+  })
+
+  test("does not duplicate rules already present", async () => {
+    const previous = process.env.HOME
+    process.env.HOME = root
+    try {
+      mkdirSync(join(root, ".config", "opencode"), { recursive: true })
+      writeFileSync(join(root, ".config", "opencode", "AGENTS.md"), AGENTS)
+      const hooks = await server()
+      const output: any = { system: [AGENTS] }
+      await hooks["experimental.chat.system.transform"]({}, output)
+      expect(output.system).toHaveLength(1)
+    } finally {
+      process.env.HOME = previous
+    }
+  })
+
+  test("never throws with an unexpected output shape", async () => {
+    const hooks = await server()
+    await expect(
+      hooks["experimental.session.compacting"]({}, undefined),
+    ).resolves.toBeUndefined()
+    await expect(
+      hooks["experimental.chat.system.transform"]({}, undefined),
+    ).resolves.toBeUndefined()
   })
 })

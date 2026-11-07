@@ -96,7 +96,68 @@ function pushSystem(event: any, text: string): void {
   event.system.push({ type: "text", text })
 }
 
-export default {
+function compactionBlock(agents: string): string {
+  let text = agents.trim()
+  if (text.length > MAX_COMPACTION_CHARS) {
+    text = `${text.slice(0, MAX_COMPACTION_CHARS)}\n[...AGENTS.md truncated]`
+  }
+  return [
+    "## Non-negotiable project rules (AGENTS.md)",
+    "The conversation above is being summarized. The summary MUST preserve these rules and cite them:",
+    "",
+    text,
+  ].join("\n")
+}
+
+function systemBlock(agents: string): string {
+  return [
+    "## Ambient rules reminder (AGENTS.md)",
+    "Obey AGENTS.md. Re-read REMOTE.md before remote operations. No code or commit without an approved issue.",
+    "",
+    digest(agents),
+  ].join("\n")
+}
+
+function pushV1(target: string[] | undefined, text: string): void {
+  if (!Array.isArray(target)) return
+  if (target.some((item) => SIGNATURES.some((signature) => item.includes(signature)))) return
+  target.push(text)
+}
+
+/**
+ * V1 entrypoint (OpenCode 1.x calls `server()` and uses the returned hooks).
+ * V2 ignores it. Hooks are wrapped so a failure never affects a model request.
+ */
+export async function server() {
+  const load = (): string => {
+    try {
+      return resolveAgents({})
+    } catch {
+      return ""
+    }
+  }
+
+  return {
+    "experimental.session.compacting": async (_input: any, output: any) => {
+      try {
+        const agents = load()
+        if (agents) pushV1(output?.context, compactionBlock(agents))
+      } catch {
+        // Never fail a request because of this plugin.
+      }
+    },
+    "experimental.chat.system.transform": async (_input: any, output: any) => {
+      try {
+        const agents = load()
+        if (agents) pushV1(output?.system, systemBlock(agents))
+      } catch {
+        // Never fail a request because of this plugin.
+      }
+    },
+  }
+}
+
+const definition = {
   id: "context-persistence",
   async setup(ctx: any) {
     const seenSessions = new Set<string>()
@@ -120,20 +181,8 @@ export default {
     await register("compaction", (event: any) => {
       const agents = load()
       if (!agents) return
-      let text = agents.trim()
-      if (text.length > MAX_COMPACTION_CHARS) {
-        text = `${text.slice(0, MAX_COMPACTION_CHARS)}\n[...AGENTS.md truncated]`
-      }
       try {
-        pushSystem(
-          event,
-          [
-            "## Non-negotiable project rules (AGENTS.md)",
-            "The conversation above is being summarized. The summary MUST preserve these rules and cite them:",
-            "",
-            text,
-          ].join("\n"),
-        )
+        pushSystem(event, compactionBlock(agents))
       } catch {
         // Never fail a model request because of this plugin.
       }
@@ -159,15 +208,7 @@ export default {
             })
           }
         }
-        pushSystem(
-          event,
-          [
-            "## Ambients rules reminder (AGENTS.md)",
-            "Obey AGENTS.md. Re-read REMOTE.md before remote operations. No code or commit without an approved issue.",
-            "",
-            digest(agents),
-          ].join("\n"),
-        )
+        pushSystem(event, systemBlock(agents))
       } catch {
         // Never fail a model request because of this plugin.
       }
@@ -178,3 +219,9 @@ export default {
     }
   },
 }
+
+export default {
+  ...definition,
+  server,
+}
+

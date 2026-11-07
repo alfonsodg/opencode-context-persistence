@@ -40,7 +40,9 @@ after a compaction rewrites the transcript.
 
 ## Requirements
 
-- OpenCode `2.x` (V2 `setup(ctx)` contract and `ctx.session.hook`).
+- OpenCode `2.x`: uses the V2 `setup(ctx)` contract and `ctx.session.hook`.
+- OpenCode `1.18+`: uses the V1 `server()` hooks
+  (`experimental.session.compacting`, `experimental.chat.system.transform`).
 - No runtime dependencies.
 
 ## Installation
@@ -57,8 +59,11 @@ after a compaction rewrites the transcript.
 ### Local file
 
 Copy `src/index.ts` to `~/.config/opencode/plugins/context-persistence.ts`
-(global) or `.opencode/plugins/context-persistence.ts` (project). Both
-directories are discovered automatically by OpenCode.
+(global, V2) or `.opencode/plugins/context-persistence.ts` (project). OpenCode
+1.x discovers `plugin/` (singular) instead, so use
+`~/.config/opencode/plugin/context-persistence.ts` there. Install it in one
+directory only: both are scanned on 2.x and two copies of the same `id` are a
+duplicate load.
 
 Verify with:
 
