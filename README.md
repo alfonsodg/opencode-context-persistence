@@ -1,41 +1,89 @@
 # opencode-context-persistence
 
-OpenCode plugin that re-injects `AGENTS.md` context
-after compaction to prevent context loss.
+OpenCode V2 plugin that keeps `AGENTS.md` rules in front of the model: a
+bounded digest on every request plus the full file in compaction summaries.
 
 ## Problem
 
-Long OpenCode sessions compact older conversation into a summary. When this
-happens, project rules in `AGENTS.md` can be dropped, causing the agent to
-forget mandates (issues-first, conventional commits, no hardcoded values, etc.).
+Long OpenCode sessions compact earlier conversation into a summary, and agents
+start ignoring project mandates (issues-first, conventional commits, no
+hardcoded values, workspace confinement). Native instruction files are only
+loaded when they resolve for the current directory, so projects without their
+own `AGENTS.md` lose the rules entirely.
 
 ## Solution
 
-This plugin hooks into `experimental.session.compacting` and injects the
-contents of `AGENTS.md` into the compaction context, ensuring the rules
-survive compaction.
+The plugin registers two OpenCode V2 session hooks:
+
+- `context`: injects a bounded digest of `AGENTS.md` into `event.system` on
+  every model request, and records a durable session instruction entry (once
+  per session) that survives compaction.
+- `compaction`: injects the full `AGENTS.md` (bounded) into the summarizer
+  system prompt so the checkpoint summary preserves the mandates.
+
+Resolution order:
+
+1. `AGENTS.md` in the session directory.
+2. Walking up parent directories (up to 20 levels).
+3. `~/.config/opencode/AGENTS.md`.
+4. `~/.config/opencode/prompts/AGENTS.md`.
+
+Injection is skipped when the system prompt already carries the file, so it
+does not duplicate OpenCode's native `instructions` support. Every hook is
+wrapped in `try/catch`: a plugin failure never breaks model resolution or a
+request.
+
+The `context` hook also stores a durable entry through
+`ctx.session.instructions.entry.put` (key `context-persistence/agents-md`) on
+the first request of each session. That entry is what keeps the rules visible
+after a compaction rewrites the transcript.
+
+## Requirements
+
+- OpenCode `2.x` (V2 `setup(ctx)` contract and `ctx.session.hook`).
+- No runtime dependencies.
 
 ## Installation
 
-### From npm
+### npm
 
-```json
+```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-context-persistence"]
+  "plugins": ["opencode-context-persistence"]
 }
 ```
 
-### From local files
+### Local file
 
-Copy `src/index.ts` to `.opencode/plugins/context-persistence.ts` in your
-project, or to `~/.config/opencode/plugins/context-persistence.ts` for global
-use.
+Copy `src/index.ts` to `~/.config/opencode/plugins/context-persistence.ts`
+(global) or `.opencode/plugins/context-persistence.ts` (project). Both
+directories are discovered automatically by OpenCode.
+
+Verify with:
+
+```bash
+opencode plugin list
+```
 
 ## Usage
 
-Place an `AGENTS.md` at your project root. The plugin reads it automatically
-and re-injects it after every compaction.
+Place an `AGENTS.md` in the project root, or keep the canonical copy at
+`~/.config/opencode/AGENTS.md`. No configuration is required.
+
+## Development
+
+```bash
+bun test
+```
+
+The E2E check runs an isolated OpenCode server against an OpenAI-compatible
+mock, so it never touches the user's sessions or providers:
+
+```bash
+export OPENCODE_CONFIG_DIR=/tmp/e2e/config
+opencode run --standalone -m localmock/mock-1 "hello"
+```
 
 ## Author
 

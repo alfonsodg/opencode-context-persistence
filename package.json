@@ -1,15 +1,12 @@
 {
   "name": "opencode-context-persistence",
-  "version": "0.1.11",
-  "description": "OpenCode plugin that re-injects AGENTS.md context after compaction to prevent context loss.",
+  "version": "0.2.0",
+  "description": "OpenCode V2 plugin that re-injects AGENTS.md rules on every request and in compaction summaries.",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "build": "bun build src/index.ts --target bun --outfile dist/index.js",
     "test": "bun test"
-  },
-  "dependencies": {
-    "@opencode-ai/plugin": "^1.19.0"
   },
   "keywords": [
     "opencode",
